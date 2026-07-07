@@ -1,0 +1,20 @@
+version: "3.8"
+
+services:
+  oil-price-monitor:
+    image: mrchengshi/oil-price-monitor:latest
+    container_name: oil-price-monitor
+    restart: unless-stopped
+    
+    # Web 配置面板端口
+    ports:
+      - "8080:8080"
+    
+    # 数据持久化
+    volumes:
+      - ./data:/app/data
+    
+    # 环境变量
+    environment:
+      - TZ=Asia/Shanghai
+      - SECRET_KEY=your-random-secret-key-here

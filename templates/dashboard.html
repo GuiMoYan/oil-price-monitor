@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>个人面板 - 国内油价监控</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background: #f5f7fa; color: #333; line-height: 1.6; padding: 20px; }
+.container { max-width: 800px; margin: 0 auto; }
+
+.navbar { display: flex; justify-content: space-between; align-items: center; background: #fff; border-radius: 12px; padding: 14px 24px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+.navbar h1 { font-size: 18px; color: #2c3e50; }
+.navbar .user { font-size: 14px; color: #666; }
+.navbar .user a { color: #e74c3c; text-decoration: none; margin-left: 12px; font-weight: 600; }
+
+.card { background: #fff; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); padding: 24px; margin-bottom: 20px; }
+.card h2 { font-size: 18px; color: #2c3e50; margin-bottom: 18px; padding-bottom: 10px; border-bottom: 1px solid #eee; }
+
+.form-group { margin-bottom: 16px; }
+.form-group label { display: block; font-weight: 600; margin-bottom: 6px; font-size: 14px; color: #444; }
+.form-group input[type="text"], .form-group input[type="number"], .form-group input[type="password"], .form-group select, .form-group textarea {
+    width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; transition: border-color 0.2s;
+}
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline: none; border-color: #3498db; }
+.form-group .hint { font-size: 12px; color: #999; margin-top: 4px; }
+.form-group .hint a { color: #3498db; }
+
+.row { display: flex; gap: 16px; flex-wrap: wrap; }
+.row .form-group { flex: 1; min-width: 200px; }
+
+.checkbox-group { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.checkbox-group input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; }
+.checkbox-group label { margin: 0; cursor: pointer; font-weight: 500; }
+
+.btn { display: inline-block; padding: 10px 24px; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: opacity 0.2s; }
+.btn:hover { opacity: 0.9; }
+.btn-primary { background: #3498db; color: #fff; }
+.btn-success { background: #27ae60; color: #fff; }
+.btn-warning { background: #f39c12; color: #fff; }
+.btn-danger { background: #e74c3c; color: #fff; }
+.btn-info { background: #9b59b6; color: #fff; }
+.btn-group { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 20px; }
+
+.status-bar { display: flex; align-items: center; gap: 10px; padding: 14px 18px; background: #ecf0f1; border-radius: 8px; margin-bottom: 20px; }
+.status-bar .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.dot.running { background: #27ae60; animation: pulse 2s infinite; }
+.dot.stopped { background: #e74c3c; }
+@keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(39,174,96,0.4); } 70% { box-shadow: 0 0 0 8px rgba(39,174,96,0); } 100% { box-shadow: 0 0 0 0 rgba(39,174,96,0); } }
+
+.log-box { background: #1e1e1e; color: #d4d4d4; border-radius: 8px; padding: 16px; font-family: "Consolas", "Monaco", monospace; font-size: 13px; height: 300px; overflow-y: auto; white-space: pre-wrap; word-wrap: break-word; }
+.log-box .info { color: #4fc1ff; }
+.log-box .error { color: #f48771; }
+.log-box .warning { color: #dcdcaa; }
+.log-box .success { color: #b5cea8; }
+
+.msg { padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; font-size: 14px; display: none; }
+.msg.show { display: block; }
+.msg.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+.msg.error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+.msg.info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+
+    .price-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+    .price-card { background: #f8fafc; border-radius: 10px; padding: 16px; border: 1px solid #e2e8f0; }
+    .price-card .province-name { font-size: 16px; font-weight: 700; color: #2c3e50; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
+    .price-card .province-name::before { content: ' '; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #3498db; }
+    .price-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #eee; font-size: 14px; }
+    .price-row:last-child { border-bottom: none; }
+    .price-row .label { color: #666; }
+    .price-row .value { font-weight: 600; color: #2c3e50; }
+    .price-row .value.gas92 { color: #3498db; }
+    .price-row .value.gas95 { color: #e67e22; }
+    .price-row .value.gas98 { color: #e74c3c; }
+    .price-row .value.diesel { color: #27ae60; }
+    .price-update-time { font-size: 12px; color: #999; margin-top: 10px; text-align: right; }
+    .price-empty { text-align: center; padding: 40px; color: #999; font-size: 14px; }
+
+.footer { text-align: center; font-size: 12px; color: #999; margin-top: 30px; }
+</style>
+</head>
+<body>
+<div class="container">
+    <div class="navbar">
+        <h1>国内油价监控</h1>
+        <div class="user">
+            当前用户：<span id="username-display">加载中...</span>
+            <a href="/logout">退出登录</a>
+        </div>
+    </div>
+
+    <div id="msg-box" class="msg"></div>
+
+    <div class="status-bar">
+        <span class="dot" id="status-dot"></span>
+        <span id="status-text">加载中...</span>
+    </div>
+
+    <div class="card">
+        <h2>当前油价</h2>
+        <div class="price-update-time" id="price-update-time"></div>
+        <div id="price-container" class="price-grid">
+            <div class="price-empty">点击"刷新油价"查看最新数据</div>
+        </div>
+        <div class="btn-group" style="margin-top:14px;">
+            <button class="btn btn-primary" onclick="fetchPrices()">刷新油价</button>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>基本设置</h2>
+        <div class="row">
+            <div class="form-group">
+                <label>关注省份</label>
+                <select id="target_provinces" multiple size="4">
+                    <option value="北京">北京</option>
+                    <option value="上海">上海</option>
+                    <option value="天津">天津</option>
+                    <option value="重庆">重庆</option>
+                    <option value="河北">河北</option>
+                    <option value="山西">山西</option>
+                    <option value="辽宁">辽宁</option>
+                    <option value="吉林">吉林</option>
+                    <option value="黑龙江">黑龙江</option>
+                    <option value="江苏">江苏</option>
+                    <option value="浙江">浙江</option>
+                    <option value="安徽">安徽</option>
+                    <option value="福建">福建</option>
+                    <option value="江西">江西</option>
+                    <option value="山东">山东</option>
+                    <option value="河南">河南</option>
+                    <option value="湖北">湖北</option>
+                    <option value="湖南">湖南</option>
+                    <option value="广东">广东</option>
+                    <option value="广西">广西</option>
+                    <option value="海南">海南</option>
+                    <option value="四川">四川</option>
+                    <option value="贵州">贵州</option>
+                    <option value="云南">云南</option>
+                    <option value="西藏">西藏</option>
+                    <option value="陕西">陕西</option>
+                    <option value="甘肃">甘肃</option>
+                    <option value="青海">青海</option>
+                    <option value="宁夏">宁夏</option>
+                    <option value="新疆">新疆</option>
+                    <option value="内蒙古">内蒙古</option>
+                </select>
+                <div class="hint">按住 Ctrl 可多选，至少选一个</div>
+            </div>
+            <div class="form-group">
+                <label>检查间隔（小时）</label>
+                <input type="number" id="check_interval_hours" min="1" max="168" value="12">
+                <div class="hint">建议 12 小时，国内油价每10个工作日调整一次</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>邮件推送</h2>
+        <div class="checkbox-group">
+            <input type="checkbox" id="email_enabled">
+            <label for="email_enabled">启用邮件推送</label>
+        </div>
+        <div class="hint">推荐用 QQ邮箱，需在邮箱设置中开启 SMTP 服务并获取授权码</div>
+        <div class="row" style="margin-top:12px;">
+            <div class="form-group">
+                <label>SMTP 服务器</label>
+                <input type="text" id="email_smtp_server" placeholder="smtp.qq.com">
+            </div>
+            <div class="form-group">
+                <label>SMTP 端口</label>
+                <input type="number" id="email_smtp_port" value="465">
+            </div>
+        </div>
+        <div class="row">
+            <div class="form-group">
+                <label>发件邮箱</label>
+                <input type="text" id="email_username" placeholder="123456@qq.com">
+            </div>
+            <div class="form-group">
+                <label>授权码 / 密码</label>
+                <input type="password" id="email_password" placeholder="不是登录密码，是SMTP授权码">
+            </div>
+        </div>
+        <div class="row">
+            <div class="form-group">
+                <label>发件人显示名</label>
+                <input type="text" id="email_sender" placeholder="油价监控">
+            </div>
+            <div class="form-group">
+                <label>收件人邮箱</label>
+                <input type="text" id="email_receiver" placeholder="123456@qq.com">
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Bark 推送（iPhone）</h2>
+        <div class="checkbox-group">
+            <input type="checkbox" id="bark_enabled">
+            <label for="bark_enabled">启用 Bark 推送</label>
+        </div>
+        <div class="hint">在 App Store 下载 Bark，打开 App 复制设备 Key 填入下方</div>
+        <div class="row" style="margin-top:12px;">
+            <div class="form-group">
+                <label>Bark Key</label>
+                <input type="text" id="bark_key" placeholder="从 Bark App 复制的 Key">
+            </div>
+            <div class="form-group">
+                <label>Bark 服务器（可选）</label>
+                <input type="text" id="bark_server" placeholder="https://api.day.app">
+                <div class="hint">留空使用官方服务器</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="btn-group">
+            <button class="btn btn-primary" onclick="saveConfig()">保存配置</button>
+            <button class="btn btn-success" onclick="triggerNow()">立即检查</button>
+            <button class="btn btn-warning" onclick="toggleScheduler()" id="toggle-btn">启动监控</button>
+            <button class="btn btn-info" onclick="testPush()">测试推送</button>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>运行日志</h2>
+        <div class="log-box" id="log-box">等待日志...</div>
+        <div class="btn-group" style="margin-top:10px;">
+            <button class="btn btn-primary" onclick="fetchLogs()">刷新日志</button>
+            <button class="btn btn-danger" onclick="clearLogs()">清空日志</button>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>油价数据来源于公开油价查询网站，仅供参考 · 多用户独立推送</p>
+    </div>
+</div>
+
+<script>
+function showMsg(text, type) {
+    const box = document.getElementById('msg-box');
+    box.textContent = text;
+    box.className = 'msg show ' + type;
+    setTimeout(() => { box.className = 'msg'; }, 4000);
+}
+
+async function loadConfig() {
+    try {
+        const res = await fetch('/api/config');
+        if (res.status === 401) { location.href = '/login'; return; }
+        const data = await res.json();
+        const s = data.settings;
+        document.getElementById('username-display').textContent = data.username || '未知';
+        
+        const provinces = (s.target_provinces || '北京').split(',').map(p => p.trim());
+        const select = document.getElementById('target_provinces');
+        for (let opt of select.options) { opt.selected = provinces.includes(opt.value); }
+        
+        document.getElementById('check_interval_hours').value = s.check_interval_hours || 12;
+        document.getElementById('email_enabled').checked = (s.email_enabled === 'true');
+        document.getElementById('email_smtp_server').value = s.email_smtp_server || '';
+        document.getElementById('email_smtp_port').value = s.email_smtp_port || 465;
+        document.getElementById('email_username').value = s.email_username || '';
+        document.getElementById('email_password').value = s.email_password || '';
+        document.getElementById('email_sender').value = s.email_sender || '';
+        document.getElementById('email_receiver').value = s.email_receiver || '';
+        document.getElementById('bark_enabled').checked = (s.bark_enabled === 'true');
+        document.getElementById('bark_key').value = s.bark_key || '';
+        document.getElementById('bark_server').value = s.bark_server || '';
+        
+        updateStatus(data.status);
+    } catch (e) { showMsg('加载配置失败: ' + e.message, 'error'); }
+}
+
+async function saveConfig() {
+    const select = document.getElementById('target_provinces');
+    const provinces = Array.from(select.selectedOptions).map(o => o.value).join(',');
+    if (!provinces) { showMsg('请至少选择一个关注省份', 'error'); return; }
+    
+    const payload = {
+        target_provinces: provinces,
+        check_interval_hours: document.getElementById('check_interval_hours').value,
+        email_enabled: document.getElementById('email_enabled').checked ? 'true' : 'false',
+        email_smtp_server: document.getElementById('email_smtp_server').value,
+        email_smtp_port: document.getElementById('email_smtp_port').value,
+        email_username: document.getElementById('email_username').value,
+        email_password: document.getElementById('email_password').value,
+        email_sender: document.getElementById('email_sender').value,
+        email_receiver: document.getElementById('email_receiver').value,
+        bark_enabled: document.getElementById('bark_enabled').checked ? 'true' : 'false',
+        bark_key: document.getElementById('bark_key').value,
+        bark_server: document.getElementById('bark_server').value
+    };
+    
+    try {
+        const res = await fetch('/api/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        const data = await res.json();
+        if (data.success) showMsg('配置保存成功！', 'success');
+        else showMsg('保存失败: ' + (data.error || '未知错误'), 'error');
+    } catch (e) { showMsg('保存失败: ' + e.message, 'error'); }
+}
+
+async function toggleScheduler() {
+    try {
+        const res = await fetch('/api/toggle', { method: 'POST' });
+        const data = await res.json();
+        showMsg(data.message, 'success');
+        updateStatus(data.status);
+    } catch (e) { showMsg('操作失败: ' + e.message, 'error'); }
+}
+
+async function triggerNow() {
+    try {
+        const res = await fetch('/api/trigger', { method: 'POST' });
+        const data = await res.json();
+        showMsg(data.message, 'success');
+    } catch (e) { showMsg('触发失败: ' + e.message, 'error'); }
+}
+
+async function testPush() {
+    try {
+        const res = await fetch('/api/test_push', { method: 'POST' });
+        const data = await res.json();
+        if (data.success) showMsg('测试推送已发送，请查收', 'success');
+        else showMsg('测试推送失败: ' + (data.error || ''), 'error');
+    } catch (e) { showMsg('测试失败: ' + e.message, 'error'); }
+}
+
+function updateStatus(status) {
+    const dot = document.getElementById('status-dot');
+    const text = document.getElementById('status-text');
+    const btn = document.getElementById('toggle-btn');
+    if (status.running) {
+        dot.className = 'dot running';
+        text.textContent = '监控运行中 · 每小时扫描所有用户';
+        btn.textContent = '停止监控';
+        btn.className = 'btn btn-danger';
+    } else {
+        dot.className = 'dot stopped';
+        text.textContent = '监控已停止 · 点击"启动监控"开始运行';
+        btn.textContent = '启动监控';
+        btn.className = 'btn btn-success';
+    }
+}
+
+let logOffset = 0;
+async function fetchLogs() {
+    try {
+        const res = await fetch('/api/logs?offset=' + logOffset);
+        const data = await res.json();
+        const box = document.getElementById('log-box');
+        if (data.lines && data.lines.length > 0) {
+            const html = data.lines.map(line => {
+                let cls = '';
+                if (line.includes('ERROR') || line.includes('错误')) cls = 'error';
+                else if (line.includes('WARNING') || line.includes('警告')) cls = 'warning';
+                else if (line.includes('成功') || line.includes('OK')) cls = 'success';
+                else cls = 'info';
+                return '<span class="' + cls + '">' + escapeHtml(line) + '</span>';
+            }).join('\n');
+            if (logOffset === 0) box.innerHTML = html;
+            else box.innerHTML += '\n' + html;
+            logOffset = data.next_offset;
+            box.scrollTop = box.scrollHeight;
+        }
+    } catch (e) { console.error('获取日志失败', e); }
+}
+function clearLogs() { document.getElementById('log-box').innerHTML = '日志已清空'; logOffset = 0; }
+function escapeHtml(text) { const div = document.createElement('div'); div.textContent = text; return div.innerHTML; }
+
+async function fetchPrices() {
+    const container = document.getElementById('price-container');
+    const timeDiv = document.getElementById('price-update-time');
+    container.innerHTML = '<div class="price-empty">正在获取油价数据...</div>';
+    try {
+        const res = await fetch('/api/prices');
+        if (res.status === 401) { location.href = '/login'; return; }
+        const data = await res.json();
+        if (!data.success) {
+            container.innerHTML = '<div class="price-empty">获取失败: ' + escapeHtml(data.error || '未知错误') + '</div>';
+            return;
+        }
+        if (!data.prices || data.prices.length === 0) {
+            container.innerHTML = '<div class="price-empty">暂无油价数据，请先配置关注省份</div>';
+            return;
+        }
+        let html = '';
+        let updateTime = '';
+        for (const p of data.prices) {
+            if (p.fetched_at && p.fetched_at !== '未知') updateTime = '数据更新时间: ' + p.fetched_at;
+            html += '<div class="price-card">' +
+                '<div class="province-name">' + escapeHtml(p.province) + '</div>' +
+                '<div class="price-row"><span class="label">92号汽油</span><span class="value gas92">' + escapeHtml(p.gas92) + ' 元/升</span></div>' +
+                '<div class="price-row"><span class="label">95号汽油</span><span class="value gas95">' + escapeHtml(p.gas95) + ' 元/升</span></div>' +
+                '<div class="price-row"><span class="label">98号汽油</span><span class="value gas98">' + escapeHtml(p.gas98) + ' 元/升</span></div>' +
+                '<div class="price-row"><span class="label">0号柴油</span><span class="value diesel">' + escapeHtml(p.diesel0) + ' 元/升</span></div>' +
+                '</div>';
+        }
+        container.innerHTML = html;
+        timeDiv.textContent = updateTime;
+    } catch (e) {
+        container.innerHTML = '<div class="price-empty">获取失败: ' + escapeHtml(e.message) + '</div>';
+    }
+}
+
+loadConfig();
+fetchLogs();
+fetchPrices();
+setInterval(fetchLogs, 5000);
+setInterval(async () => { const res = await fetch('/api/status'); const data = await res.json(); updateStatus(data); }, 10000);
+</script>
+</body>
+</html>
